@@ -70,23 +70,37 @@
      /* keep toolbar centered but make groups hug ends of it */
 .toolbar { display:flex; justify-content:space-between; align-items:center; width:100%; max-width:1100px; }
 
+/* left stays left, right will push to the far right of the toolbar */
+.left-group { margin-right: 0; } /* optional */
 .right-group { margin-left: auto; }
-
-.toolbar-wrapper { display:flex; justify-content:center; padding: 0 16px; } 
+/* make toolbar span page width (minus wrapper padding) */
+.toolbar-wrapper { display:flex; justify-content:center; padding: 0 16px; } /* keep wrapper */
 .toolbar {
     display:flex;
     justify-content:space-between;
     align-items:center;
-    width: calc(100% - 32px); 
-    max-width: none;          
+    width: calc(100% - 32px); /* full width minus wrapper padding */
+    max-width: none;          /* remove the 1100px cap */
 }
 
+/* groups behave normally inside a full-width toolbar */
 .left-group, .right-group { display:flex; align-items:center; gap:8px; }
 
+   
    </style>
 </head>
 <body>
-    <!-- Navbar commented (we added common navbar at bottom) -->
+    <!-- <div class="navbar">
+        <div style="display:flex; align-items:center;">
+            <img src="/images/abhitech-logo.png" alt="Company Logo">
+            <h1>Combustion Analyzer</h1>
+        </div>
+        <div class="nav-buttons">
+            <button onclick="window.location.href='model.html'">Model</button>
+            <button onclick="window.location.href='slagging_coal_page.html'">Calculation</button>
+            <button class="logout-btn" onclick="logoutUser()">Logout</button>
+        </div>
+    </div> -->
 
     <h1 class="page-title">Slagging Data Table</h1>
 
@@ -95,6 +109,7 @@
             <div class="left-group">
                 <button class="btn-template" id="btn-download-template">Download Template</button>
 
+                <!-- Replaced label with a proper button to fix UI -->
                 <button id="btn-upload" class="btn-upload" type="button">📤 Upload New Data</button>
                 <input type="file" id="fileInput" accept=".xlsx,.xls">
 
@@ -128,9 +143,8 @@
 <script>
     // Simple auth check (kept)
     if (localStorage.getItem('isLoggedIn') !== 'true') {
-        // keep but don't aggressively block in case of testing
-        // alert('You must login first!');
-        // window.location.href = '/login.html';
+        alert('You must login first!');
+        window.location.href = '/login.html';
     }
 
     // ---------- helpers ----------
@@ -140,7 +154,7 @@
         if (typeof value === "string") {
             const t = value.trim();
             if (t === "") return "";
-            const n = Number(t.replace(/,/g,'')); // allow thousand separators
+            const n = Number(t.replace(/,/g,''));
             if (!isNaN(n) && isFinite(n)) return n.toFixed(2);
             return value;
         }
@@ -155,16 +169,6 @@
             .catch(err => console.error("fetch error", err));
     }
 
-    // prefer explicit coalId field for the first column (Coal ID)
-    function getCoalIdFromRow(r) {
-        if (!r) return '';
-        if (r.coalId !== undefined && r.coalId !== null && String(r.coalId).trim() !== '') return String(r.coalId);
-        if (r['Coal ID'] !== undefined && r['Coal ID'] !== null && String(r['Coal ID']).trim() !== '') return String(r['Coal ID']);
-        // fallback only if absolutely necessary
-        if (r._id) return String(r._id);
-        return '';
-    }
-
     function displayTable(data) {
         const headerRow = document.getElementById('table-header');
         const tbody = document.getElementById('table-body');
@@ -175,25 +179,31 @@
             return;
         }
 
-        // Collect all keys present across rows (exclude __v)
+        // Compute header keys: ensure Coal ID first then other keys (excluding _id)
+        // We'll inspect all rows to build a stable header order
         const keySet = new Set();
-        data.forEach(d => Object.keys(d).forEach(k => { if (k !== '__v') keySet.add(k); }));
-
-        // Preferred order; we'll show "Coal ID" as first visible column always
-        const preferred = ['coal','name','SiO2','Al2O3','Fe2O3','CaO','MgO','Na2O','K2O','TiO2','SO3','P2O5','Mn3O4','Sulphur','GCV','cost','Transport ID','shipmentDate'];
+        data.forEach(d => Object.keys(d).forEach(k => keySet.add(k)));
+        // We prefer the following order: coalId (if present) or _id as "Coal ID", then coal/name, other known fields, then rest
+        const preferred = ['coalId','_id','coal','Coal','name','SiO2','Al2O3','Fe2O3','CaO','MgO','Na2O','K2O','TiO2','SO3','P2O5','Mn3O4','Sulphur','GCV','cost','Transport ID','shipmentDate'];
         const keys = [];
-        keys.push('Coal ID'); // visible first header
 
-        // Add preferred keys if present
+        // Add Coal ID column as "Coal ID"
+        keys.push('Coal ID');
+
+        // Build the rest: include known preferred fields if present
         preferred.forEach(p => {
-            if (keySet.has(p) && !keys.includes(p)) {
-                keys.push(p);
+            if (keySet.has(p) && !['coalId','_id'].includes(p) && p !== 'Coal ID') {
+                if (!keys.includes(p)) keys.push(p);
+                keySet.delete(p);
+            }
+            if (keySet.has(p) && ['coalId','_id'].includes(p)) {
+                // these were consumed by "Coal ID" column already
                 keySet.delete(p);
             }
         });
 
-        // Add remaining keys (excluding internal and coalId/_id since we used Coal ID above)
-        Array.from(keySet).filter(k => k !== 'coalId' && k !== '_id' && k !== '__v').forEach(k => keys.push(k));
+        // remaining keys (exclude internal __v)
+        Array.from(keySet).filter(k => k !== '__v').forEach(k => keys.push(k));
 
         // final column is Select
         keys.push('Select');
@@ -205,49 +215,45 @@
             headerRow.appendChild(th);
         });
 
+        // Helper: get coalId value from row
+        function getCoalIdFromRow(r) {
+            if (r.coalId) return String(r.coalId);
+            if (r['Coal ID']) return String(r['Coal ID']);
+            if (r._id) return String(r._id);
+            return '';
+        }
+
         // render rows
         data.forEach(row => {
             const tr = document.createElement('tr');
 
-            // Coal ID cell (prefer coalId)
+            // Coal ID first
             const coalIdVal = getCoalIdFromRow(row);
             const tdId = document.createElement('td');
             tdId.textContent = coalIdVal;
             tr.appendChild(tdId);
 
-            // Build other columns in same order as header (skip first, skip last)
+            // other keys: iterate over header keys starting from second index up to last-1 (skip Select)
+            // reconstruct the same order used for headers (except Coal ID and Select)
             const headerKeys = Array.from(headerRow.children).map(th => th.textContent);
             for (let i = 1; i < headerKeys.length - 1; i++) {
                 const key = headerKeys[i];
-                let raw = '';
-                // direct property
-                if (row[key] !== undefined) raw = row[key];
-                else if (row[key.replace(/\s+/g,'')] !== undefined) raw = row[key.replace(/\s+/g,'')];
-                else {
-                    // fallbacks for common names
-                    if ((key === 'coal' || key === 'Coal' || key === 'name') && !raw) raw = row.coal || row.name || row['Coal'];
-                    if ((key === 'GCV' || key === 'gcv') && raw === undefined) raw = row.GCV || row.gcv;
-                }
+                // For keys like 'Transport ID' or 'shipmentDate' we just use the property if exists
+                let raw = row[key] !== undefined ? row[key] : (row[key.replace(/\s+/g,'')] !== undefined ? row[key.replace(/\s+/g,'')] : "");
+                // If header equals some canonical internal names, try alternate names
+                if ((key === 'coal' || key === 'Coal' || key === 'name') && !raw) raw = row.coal || row.name || row['Coal'];
+                if ((key === 'GCV' || key === 'gcv') && raw === undefined) raw = row.GCV || row.gcv;
                 const td = document.createElement('td');
                 td.textContent = formatCellValue(raw);
                 tr.appendChild(td);
             }
 
-            // select checkbox column
+            // checkbox column
             const cbTd = document.createElement('td');
             const cb = document.createElement('input');
             cb.type = 'checkbox';
-
-            // primary id for client actions should be coalId (not mongo _id) — fallback if missing
-            const primaryId = (row.coalId !== undefined && row.coalId !== null && String(row.coalId).trim() !== '') ? String(row.coalId) : (row._id ? String(row._id) : '');
-            if (primaryId) {
-                cb.setAttribute('data-id', primaryId);
-            } else {
-                cb.setAttribute('data-id', '');
-            }
-            if (row._id) cb.setAttribute('data-oid', String(row._id)); // keep original mongo id if needed
-
-            // store original row for downloads
+            cb.setAttribute('data-id', row._id ? String(row._id) : getCoalIdFromRow(row));
+            // store original row (stringified). Use safe fallback.
             try { cb.dataset.row = JSON.stringify(row); } catch(e) { cb.dataset.row = "{}"; }
             cb.addEventListener('change', updateSelectionButtons);
             cbTd.appendChild(cb);
@@ -256,10 +262,12 @@
             tbody.appendChild(tr);
         });
 
+        // after rendering reset buttons state
         updateSelectionButtons();
     }
 
     // ---------- file upload ----------
+    // trigger hidden file input when upload button is clicked
     document.getElementById('btn-upload').addEventListener('click', function() {
         const fi = document.getElementById('fileInput');
         if (fi) fi.click();
@@ -286,6 +294,7 @@
 
     // ---------- download template ----------
     document.getElementById('btn-download-template').addEventListener('click', function(){
+        // includeData = false
         window.location.href = "/download-template";
     });
 
@@ -296,15 +305,14 @@
         const downloadBtn = document.getElementById('download-selected-btn');
 
         const any = checked.length > 0;
-        if (deleteBtn) deleteBtn.disabled = !any;
-        if (downloadBtn) downloadBtn.disabled = !any;
+        deleteBtn.disabled = !any;
+        downloadBtn.disabled = !any;
     }
 
     document.getElementById('delete-selected-btn').addEventListener('click', function(){
         const checked = Array.from(document.querySelectorAll('input[type="checkbox"]:checked'));
         if (checked.length === 0) { alert('Select rows first'); return; }
         if (!confirm('Are you sure you want to delete selected rows?')) return;
-        // collect primary ids (coalId preferred)
         const ids = checked.map(cb => cb.getAttribute('data-id')).filter(Boolean);
 
         fetch('/delete-data', {
@@ -346,12 +354,14 @@
             try { return JSON.parse(cb.dataset.row || "{}"); } catch(e) { return {}; }
         });
 
+        const keys = Object.keys(rows[0] || {}).filter(k => k !== "_id");
+
         if (format === 'excel') {
             const jsonData = rows.map(r => {
                 const obj = {};
                 Object.keys(r).forEach(k => {
                     if (k === '_id') return;
-                    obj[k] = (r[k] === null || r[k] === undefined) ? "" : (typeof r[k] === 'number' ? r[k].toFixed(2) : r[k]);
+                    obj[k] = formatCellValue(r[k]);
                 });
                 return obj;
             });
@@ -362,6 +372,8 @@
         } else if (format === 'pdf') {
             const { jsPDF } = window.jspdf;
             const doc = new jsPDF("l", "mm", "a4");
+            // reuse your earlier robust pdf logic or a simplified table export here
+            // Simplified approach: create small PDF listing rows as lines
             doc.setFontSize(10);
             let y = 10;
             rows.forEach((r, idx) => {
@@ -372,6 +384,7 @@
             });
             doc.save('selected_rows.pdf');
         }
+        // hide menu
         const menu = document.getElementById('download-menu'); if (menu) menu.style.display = 'none';
     }
 
@@ -379,9 +392,11 @@
     document.getElementById('downloadWholePDFBtn').addEventListener('click', function(){
         const element = document.body;
         window.scrollTo(0,0);
+
+        // Use window.jspdf (UMD) export reliably, and robust multi-page handling
         html2canvas(element, { scale: 2, useCORS: true, allowTaint: true }).then(canvas => {
             const imgData = canvas.toDataURL('image/png');
-            const { jsPDF } = window.jspdf || window;
+            const { jsPDF } = window.jspdf || window; // use UMD export
             const pdf = new jsPDF('p','mm','a4');
             const pageWidth = pdf.internal.pageSize.getWidth();
             const pageHeight = pdf.internal.pageSize.getHeight();
@@ -490,6 +505,7 @@
 
 /* push page content below navbar (only added if page doesn't already do it) */
 html body { --navbar-height: var(--nav-h); }
+/* main, .content, .toolbar-wrapper, #content, #coalForm { margin-top: calc(var(--navbar-height) + 12px) !important; } */
 </style>
 
 <div class="common-navbar-wrapper" role="navigation" aria-label="Main navigation">
@@ -501,6 +517,7 @@ html body { --navbar-height: var(--nav-h); }
 
     <div style="display:flex; align-items:center; gap:12px;">
       <div class="nav-buttons" role="menubar" aria-label="Primary">
+        <!-- important: use the exact filenames from your site -->
         <button data-target="coal_table.html" title="Coal Properties">Coal Properties</button>
         <button data-target="slagging_coal_page.html" title="Calculation">Calculation</button>
         <button data-target="model.html" title="Model">Model</button>
@@ -508,6 +525,7 @@ html body { --navbar-height: var(--nav-h); }
 
       <div style="width:8px;"></div>
 
+      <!-- keep logout last -->
       <div class="nav-buttons" aria-hidden="false">
         <button class="logout-btn" id="common-logout-btn" title="Logout">Logout</button>
       </div>
@@ -516,15 +534,23 @@ html body { --navbar-height: var(--nav-h); }
 </div>
 
 <script>
+/* Common navbar script: sets active button and wiring
+   Paste this JS as-is into each page (kept inline for simplicity).
+*/
 (function(){
+  // find nav buttons and add click behavior
   const navBtns = Array.from(document.querySelectorAll('.common-navbar .nav-buttons button'))
-    .filter(b => b.dataset && b.dataset.target);
+    .filter(b => b.dataset && b.dataset.target); // keep element buttons only
 
+  // mark active based on current path or filename
   const path = (location.pathname || '').split('/').pop().toLowerCase();
+
   let matched = false;
   navBtns.forEach(btn => {
     const target = (btn.dataset.target || '').toLowerCase();
+    // button click navigates (keeps behavior same)
     btn.addEventListener('click', () => { if (target) location.href = target; });
+    // choose active when filenames match, or if path is empty, match model.html as default
     if ((path && path === target) || (!path && target === 'model.html')) {
       btn.classList.add('active');
       matched = true;
@@ -533,6 +559,7 @@ html body { --navbar-height: var(--nav-h); }
     }
   });
 
+  // If no match found (e.g. URL rewrite), try to match by presence of page-specific id in body
   if (!matched) {
     const pageHints = ['coal', 'slag', 'model'];
     for (const btn of navBtns) {
@@ -546,10 +573,12 @@ html body { --navbar-height: var(--nav-h); }
     }
   }
 
+  // logout behavior (matches earlier logout functions)
   const logoutBtn = document.getElementById('common-logout-btn');
   if (logoutBtn) {
     logoutBtn.addEventListener('click', () => {
       try { localStorage.setItem('isLoggedIn','false'); } catch(e) {}
+      // preserve existing logout pattern: redirect to login.html
       window.location.href = '/login.html';
     });
   }

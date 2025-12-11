@@ -23,71 +23,6 @@
             overflow-x: hidden;
         }
 
-        .navbar {
-            display: flex;
-            justify-content: space-between;
-            width: 100%;
-            background-color: #f7f8fa;
-            align-items: center;
-            padding: 15px 20px;
-            color: white;
-            position: fixed;
-            top: 0;
-            left: 0;
-            height: 65px;
-            z-index: 1000;
-            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
-        }
-
-        .navbar img {
-            height: 70px;
-            /* Adjusted height to fit the page */
-            margin-right: 20px;
-            margin-left: 10px;
-            /* Added margin to center-align better */
-            display: block;
-            max-width: 100%;
-            /* Ensures the logo scales within the navbar */
-            object-fit: contain;
-            /* Maintains aspect ratio */
-        }
-
-        .nav-buttons {
-            display: flex;
-            gap: 10px;
-            margin-right: 20px;
-        }
-
-        .navbar h1 {
-            margin-left: 0px;
-            font-size: 20px;
-            color: black;
-        }
-
-        .navbar button {
-            padding: 10px 15px;
-            background-color: #02008a;
-            color: #ffffff;
-            border: none;
-            cursor: pointer;
-            border-radius: 5px;
-            margin-right: 20px;
-            font-weight: bold;
-        }
-
-        .navbar button:hover {
-            background-color: #001cbb;
-        }
-
-        .logout-button {
-            background-color: red !important;
-            margin-right: 30px;
-        }
-
-        .logout-button:hover {
-            background-color: darkred !important;
-        }
-
         .content {
             margin-top: 200px;
             /* Ensure content starts below the navbar */
@@ -538,50 +473,6 @@ body {
   margin:0;
 }
 
-/* NAVBAR - same position but elevated */
-.navbar{
-  position: fixed;
-  top:0; left:0; right:0;
-  height:72px;
-  padding:10px 22px;
-  display:flex;
-  align-items:center;
-  justify-content:space-between;
-  background: linear-gradient(180deg, rgba(255,255,255,0.92), rgba(250,251,255,0.86));
-  box-shadow: 0 10px 30px rgba(9,20,46,0.06);
-  border-bottom: 1px solid rgba(2,18,110,0.04);
-  backdrop-filter: blur(4px) saturate(1.05);
-  z-index:1100;
-}
-
-/* Logo sizing (keeps layout but more balanced) */
-.navbar img{ height:46px; object-fit:contain; margin-right:12px; }
-
-/* Title */
-.navbar h1{
-  font-weight:700;
-  font-size:18px;
-  color:var(--primary-2);
-  margin:0 14px;
-  letter-spacing:0.2px;
-}
-
-/* Nav buttons (pill style) */
-.nav-buttons{ display:flex; gap:10px; align-items:center; }
-.nav-buttons button{
-  padding:8px 14px;
-  border-radius:999px;
-  border:none;
-  font-weight:600;
-  cursor:pointer;
-  background: linear-gradient(180deg,var(--primary-1),var(--primary-2));
-  color:#fff;
-  box-shadow: 0 8px 20px rgba(2,18,110,0.07);
-  transition: transform .12s ease, box-shadow .12s ease, opacity .12s;
-}
-.nav-buttons button:hover{ transform: translateY(-3px); box-shadow: 0 14px 40px rgba(2,18,110,0.09); }
-.nav-buttons .logout-btn{ background: linear-gradient(180deg,#ff4b4b,#e32d2d); box-shadow: 0 8px 22px rgba(227,45,45,0.08); }
-
 /* Main content area — preserve top margin but refine spacing */
 .content{
   padding: 28px;
@@ -777,17 +668,6 @@ if(localStorage.getItem('isLoggedIn') !== 'true') {
 </head>
 
 <body>
-    <div class="navbar">
-        <img src="/images/abhitech-logo.png" alt="Company Logo">
-        <h1>Combustion Analyzer</h1>
-        <div class="nav-buttons">
-            <button onclick="window.location.href='coal_table.html'">Coal Properties</button>
-            <button onclick="window.location.href='slagging_coal_page.html'">Calculation</button>
-            <!-- <button onclick="window.location.href='coal_blend_simulation.html'">Coal Blend Simulation</button> -->
-             <button class="logout-btn" onclick="logoutUser()">Logout</button>
-        </div>
-    </div>
-
     <div class="content">
         <button id="downloadPDF" class="icon-btn" title="Download page as PDF">⬇️</button>
         <form id="coalForm">
@@ -1118,88 +998,182 @@ function fetchCoalProperties(button) {
     if (event.target === modal) modal.style.display = 'none';
   };
 
-  function optimizeBlend() {
-    const blends = [];
+//   function optimizeBlend() {
+//     const blends = [];
 
-    // Validate total is 100
-    let totalCurrentRange = 0;
-    document.querySelectorAll('input[data-field="currentrange"]').forEach(inp => {
-      const v = parseFloat(inp.value);
-      if (!isNaN(v)) totalCurrentRange += v;
-    });
+//     // Validate total is 100
+//     let totalCurrentRange = 0;
+//     document.querySelectorAll('input[data-field="currentrange"]').forEach(inp => {
+//       const v = parseFloat(inp.value);
+//       if (!isNaN(v)) totalCurrentRange += v;
+//     });
 
-    if (Math.round(totalCurrentRange) !== 100) { // allow minor float imprecision
-      alert('Total percentage must be exactly 100 to proceed!');
-      return;
-    }
+//     if (Math.round(totalCurrentRange) !== 100) { // allow minor float imprecision
+//       alert('Total percentage must be exactly 100 to proceed!');
+//       return;
+//     }
 
-    // Build blends array by inspecting each .blend row
-    const blendRows = Array.from(document.querySelectorAll('.blend'));
-    blendRows.forEach(row => {
-      const selectedId = row.querySelector('select')?.value || '';
-      const min = parseFloat(row.querySelector('input[data-field="minrange"]')?.value) || 0;
-      const max = parseFloat(row.querySelector('input[data-field="maxrange"]')?.value) || 0;
-      const cost = parseFloat(row.querySelector('input[data-field="cost"]')?.value) || 0;
-      const current = parseFloat(row.querySelector('input[data-field="currentrange"]')?.value) || 0;
-      const currency = row.querySelector('input[data-field="currency"]')?.value || 'INR';
+//     // Build blends array by inspecting each .blend row
+//     const blendRows = Array.from(document.querySelectorAll('.blend'));
+//     blendRows.forEach(row => {
+//       const selectedId = row.querySelector('select')?.value || '';
+//       const min = parseFloat(row.querySelector('input[data-field="minrange"]')?.value) || 0;
+//       const max = parseFloat(row.querySelector('input[data-field="maxrange"]')?.value) || 0;
+//       const cost = parseFloat(row.querySelector('input[data-field="cost"]')?.value) || 0;
+//       const current = parseFloat(row.querySelector('input[data-field="currentrange"]')?.value) || 0;
+//       const currency = row.querySelector('input[data-field="currency"]')?.value || 'INR';
 
-      const coalInfo = (window.coalData || []).find(c => c.id === selectedId);
-      if (!coalInfo) return; // skip rows without a selected coal
-      const resolvedGcv = getPropValue(coalInfo, 'GCV') || getPropValue(coalInfo, 'Gcv') || getPropValue(coalInfo, 'gcv') || null;
-      blends.push({
-        id: selectedId,
-        coal: coalInfo.coalType,
-        current,
-        min,
-        max,
-        cost,
-        currency,
+//       const coalInfo = (window.coalData || []).find(c => c.id === selectedId);
+//       if (!coalInfo) return; // skip rows without a selected coal
+//       const resolvedGcv = getPropValue(coalInfo, 'GCV') || getPropValue(coalInfo, 'Gcv') || getPropValue(coalInfo, 'gcv') || null;
+//       blends.push({
+//         id: selectedId,
+//         coal: coalInfo.coalType,
+//         current,
+//         min,
+//         max,
+//         cost,
+//         currency,
 
-properties: {
-  SiO2: getPropValue(coalInfo, 'SiO2'),
-  Al2O3: getPropValue(coalInfo, 'Al2O3'),
-  Fe2O3: getPropValue(coalInfo, 'Fe2O3'),
-  CaO: getPropValue(coalInfo, 'CaO'),
-  MgO: getPropValue(coalInfo, 'MgO'),
-  Na2O: getPropValue(coalInfo, 'Na2O'),
-  K2O: getPropValue(coalInfo, 'K2O'),
-  SO3: getPropValue(coalInfo, 'SO3'),
-  TiO2: getPropValue(coalInfo, 'TiO2'),
-  // canonical + server-friendly keys
-  GCV: resolvedGcv,
-  Gcv: resolvedGcv,   // <<--- add this exactly (server reads this)
-  gcv: resolvedGcv
-}
+// properties: {
+//   SiO2: getPropValue(coalInfo, 'SiO2'),
+//   Al2O3: getPropValue(coalInfo, 'Al2O3'),
+//   Fe2O3: getPropValue(coalInfo, 'Fe2O3'),
+//   CaO: getPropValue(coalInfo, 'CaO'),
+//   MgO: getPropValue(coalInfo, 'MgO'),
+//   Na2O: getPropValue(coalInfo, 'Na2O'),
+//   K2O: getPropValue(coalInfo, 'K2O'),
+//   SO3: getPropValue(coalInfo, 'SO3'),
+//   TiO2: getPropValue(coalInfo, 'TiO2'),
+//   // canonical + server-friendly keys
+//   GCV: resolvedGcv,
+//   Gcv: resolvedGcv,   // <<--- add this exactly (server reads this)
+//   gcv: resolvedGcv
+// }
 
 
 
-      });
-    });
+//       });
+//     });
 
-    if (blends.length === 0) {
-      alert('No valid blends found to optimize.');
-      return;
-    }
+//     if (blends.length === 0) {
+//       alert('No valid blends found to optimize.');
+//       return;
+//     }
 
-    // Hide form & show result container
-    document.getElementById('coalForm').style.display = 'none';
-    document.getElementById('optimization-result').style.display = 'block';
+//     // Hide form & show result container
+//     document.getElementById('coalForm').style.display = 'none';
+//     document.getElementById('optimization-result').style.display = 'block';
 
-    fetch('/optimize', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ blends })
-    })
-      .then(res => res.json())
-      .then(data => {
-        displayOptimizationResult(data, blends);
-      })
-      .catch(err => {
-        console.error('Error optimizing blend:', err);
-        alert('Optimization request failed — check console.');
-      });
+//     fetch('/optimize', {
+//       method: 'POST',
+//       headers: { 'Content-Type': 'application/json' },
+//       body: JSON.stringify({ blends })
+//     })
+//       .then(res => res.json())
+//       .then(data => {
+//         displayOptimizationResult(data, blends);
+//       })
+//       .catch(err => {
+//         console.error('Error optimizing blend:', err);
+//         alert('Optimization request failed — check console.');
+//       });
+//   }
+function optimizeBlend() {
+  // helper: returns Number or null (does NOT coerce blank -> 0 here)
+  function parseNumberOrNull(inputEl) {
+    if (!inputEl) return null;
+    const raw = inputEl.value;
+    if (raw === '' || raw === null || raw === undefined) return null;
+    const n = parseFloat(String(raw).replace(/,/g, '').trim());
+    return Number.isFinite(n) ? n : null;
   }
 
+  const blends = [];
+
+  // Validate total is 100
+  let totalCurrentRange = 0;
+  document.querySelectorAll('input[data-field="currentrange"]').forEach(inp => {
+    const v = parseFloat(inp.value);
+    if (!isNaN(v)) totalCurrentRange += v;
+  });
+
+  if (Math.round(totalCurrentRange) !== 100) { // allow minor float imprecision
+    alert('Total percentage must be exactly 100 to proceed!');
+    return;
+  }
+
+  // Build blends array by inspecting each .blend row
+  const blendRows = Array.from(document.querySelectorAll('.blend'));
+  blendRows.forEach(row => {
+    const selectedId = row.querySelector('select')?.value || '';
+    // robust parsing: return null for blank/invalid, then default to 0 only for numeric fields we want 0
+    const min = parseNumberOrNull(row.querySelector('input[data-field="minrange"]')) ?? 0;
+    const max = parseNumberOrNull(row.querySelector('input[data-field="maxrange"]')) ?? 0;
+    // cost: if user left blank we want cost = 0 for arithmetic, but detect blank explicitly
+    const costParsed = parseNumberOrNull(row.querySelector('input[data-field="cost"]'));
+    const cost = costParsed ?? 0;
+    const current = parseNumberOrNull(row.querySelector('input[data-field="currentrange"]')) ?? 0;
+    const currency = row.querySelector('input[data-field="currency"]')?.value || 'INR';
+
+    const coalInfo = (window.coalData || []).find(c => c.id === selectedId);
+    if (!coalInfo) return; // skip rows without a selected coal
+
+    // normalize GCV lookup - prefer provided canonical keys if present
+    const resolvedGcv = getPropValue(coalInfo, 'GCV') ?? getPropValue(coalInfo, 'Gcv') ?? getPropValue(coalInfo, 'gcv') ?? null;
+
+    blends.push({
+      id: selectedId,
+      coal: coalInfo.coalType,
+      current,
+      min,
+      max,
+      cost,
+      currency,
+      properties: {
+        SiO2: getPropValue(coalInfo, 'SiO2'),
+        Al2O3: getPropValue(coalInfo, 'Al2O3'),
+        Fe2O3: getPropValue(coalInfo, 'Fe2O3'),
+        CaO: getPropValue(coalInfo, 'CaO'),
+        MgO: getPropValue(coalInfo, 'MgO'),
+        Na2O: getPropValue(coalInfo, 'Na2O'),
+        K2O: getPropValue(coalInfo, 'K2O'),
+        SO3: getPropValue(coalInfo, 'SO3'),
+        TiO2: getPropValue(coalInfo, 'TiO2'),
+        // canonical + server-friendly keys (server reads Gcv)
+        GCV: resolvedGcv,
+        Gcv: resolvedGcv,
+        gcv: resolvedGcv
+      }
+    });
+  });
+
+  if (blends.length === 0) {
+    alert('No valid blends found to optimize.');
+    return;
+  }
+
+  // Hide form & show result container (keeping your original UI flow)
+  const formEl = document.getElementById('coalForm');
+  if (formEl) formEl.style.display = 'none';
+  const resultEl = document.getElementById('optimization-result');
+  if (resultEl) resultEl.style.display = 'block';
+
+  // Send to server - blends already have numeric cost as 0 if blank
+  fetch('/optimize', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ blends })
+  })
+    .then(res => res.json())
+    .then(data => {
+      displayOptimizationResult(data, blends);
+    })
+    .catch(err => {
+      console.error('Error optimizing blend:', err);
+      alert('Optimization request failed — check console.');
+    });
+}
   function displayOptimizationResult(data, blends) {
     // Data expected: best_aft_blend, cheapest_blend, balanced_blend, current_blend, individual_coal_afts
     const bestAftBlend = data.best_aft_blend || { blend: [], predicted_aft: 0, gcv:0, cost:0 };
@@ -1771,5 +1745,158 @@ async function callConsumeTrial() {
 </script>
 
 </body>
+<!-- ====== START: COMMON NAVBAR (paste into each HTML file, right after <body>) ====== -->
+<style>
+/* Common navbar override (will replace previous styles visually) */
+:root{
+  --nav-h: 90px;
+  --nav-bg-start: rgba(255,255,255,0.96);
+  --nav-bg-end: rgba(245,247,255,0.88);
+  --nav-blue-1: #02126e;
+  --nav-blue-2: #0027a7;
+  --nav-text: #071a52;
+  --nav-btn-radius: 999px;
+}
+
+/* Strongly scoped to override older rules */
+.common-navbar-wrapper { position: fixed; top: 0; left: 0; right: 0; height: var(--nav-h); z-index: 1300; }
+.common-navbar {
+  box-sizing: border-box;
+  height: 100%;
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap: 12px;
+  padding: 8px 20px;
+  background: linear-gradient(180deg, var(--nav-bg-start), var(--nav-bg-end));
+  box-shadow: 0 8px 30px rgba(9,20,46,0.06);
+  border-bottom: 1px solid rgba(2,18,110,0.04);
+  backdrop-filter: blur(4px) saturate(1.02);
+  font-family: Inter, Arial, Helvetica, sans-serif;
+}
+
+/* Left: logo + title */
+.common-navbar .brand { display:flex; align-items:center; gap:12px; }
+.common-navbar .brand img { height:46px; width:auto; object-fit:contain; display:block; }
+.common-navbar .brand .title { font-weight:700; color:var(--nav-text); font-size:18px; margin:0; }
+
+/* Center/right: nav buttons */
+.common-navbar .nav-buttons { display:flex; gap:10px; align-items:center; margin-left:12px; }
+.common-navbar .nav-buttons button{
+  padding:8px 14px;
+  border-radius:var(--nav-btn-radius);
+  border: none;
+  font-weight:600;
+  cursor:pointer;
+  background: linear-gradient(180deg,var(--nav-blue-1),var(--nav-blue-2));
+  color: #fff;
+  box-shadow: 0 8px 20px rgba(2,18,110,0.07);
+  transition: transform .12s ease, box-shadow .12s ease, opacity .12s;
+}
+.common-navbar .nav-buttons button:hover{ transform: translateY(-2px); }
+.common-navbar .nav-buttons button.logout-btn{
+  background: linear-gradient(180deg,#ff4b4b,#e32d2d) !important;
+  box-shadow: 0 8px 20px rgba(227,45,45,0.07);
+}
+
+/* Active page visual (different contrast + subtle outline) */
+.common-navbar .nav-buttons button.active {
+  background: linear-gradient(180deg,#ffffff, #f1f6ff) !important;
+  color: var(--nav-blue-2) !important;
+  box-shadow: 0 6px 18px rgba(2,18,110,0.06) !important;
+  border: 1px solid rgba(2,18,110,0.12);
+  transform: translateY(-1px) !important;
+}
+
+/* Mobile: make buttons smaller/wrapping */
+@media (max-width: 720px) {
+  .common-navbar { padding:10px 14px; }
+  .common-navbar .brand .title { font-size:15px; }
+  .common-navbar .nav-buttons { gap:6px; }
+  .common-navbar .nav-buttons button { padding:7px 10px; font-size:13px; }
+}
+
+/* push page content below navbar (only added if page doesn't already do it) */
+html body { --navbar-height: var(--nav-h); }
+/* main, .content, .toolbar-wrapper, #content, #coalForm { margin-top: calc(var(--navbar-height) + 12px) !important; } */
+</style>
+
+<div class="common-navbar-wrapper" role="navigation" aria-label="Main navigation">
+  <nav class="common-navbar">
+    <div class="brand" aria-hidden="false">
+      <img src="/images/abhitech-logo.png" alt="Abhitech logo">
+      <h1 class="title">Combustion Analyzer</h1>
+    </div>
+
+    <div style="display:flex; align-items:center; gap:12px;">
+      <div class="nav-buttons" role="menubar" aria-label="Primary">
+        <!-- important: use the exact filenames from your site -->
+        <button data-target="coal_table.html" title="Coal Properties">Coal Properties</button>
+        <button data-target="slagging_coal_page.html" title="Calculation">Calculation</button>
+        <button data-target="model.html" title="Model">Model</button>
+      </div>
+
+      <div style="width:8px;"></div>
+
+      <!-- keep logout last -->
+      <div class="nav-buttons" aria-hidden="false">
+        <button class="logout-btn" id="common-logout-btn" title="Logout">Logout</button>
+      </div>
+    </div>
+  </nav>
+</div>
+
+<script>
+/* Common navbar script: sets active button and wiring
+   Paste this JS as-is into each page (kept inline for simplicity).
+*/
+(function(){
+  // find nav buttons and add click behavior
+  const navBtns = Array.from(document.querySelectorAll('.common-navbar .nav-buttons button'))
+    .filter(b => b.dataset && b.dataset.target); // keep element buttons only
+
+  // mark active based on current path or filename
+  const path = (location.pathname || '').split('/').pop().toLowerCase();
+
+  let matched = false;
+  navBtns.forEach(btn => {
+    const target = (btn.dataset.target || '').toLowerCase();
+    // button click navigates (keeps behavior same)
+    btn.addEventListener('click', () => { if (target) location.href = target; });
+    // choose active when filenames match, or if path is empty, match model.html as default
+    if ((path && path === target) || (!path && target === 'model.html')) {
+      btn.classList.add('active');
+      matched = true;
+    } else {
+      btn.classList.remove('active');
+    }
+  });
+
+  // If no match found (e.g. URL rewrite), try to match by presence of page-specific id in body
+  if (!matched) {
+    const pageHints = ['coal', 'slag', 'model'];
+    for (const btn of navBtns) {
+      const t = btn.dataset.target || '';
+      for (const h of pageHints) {
+        if (t.indexOf(h) !== -1 && document.body.innerText.toLowerCase().includes(h)) {
+          btn.classList.add('active'); matched = true; break;
+        }
+      }
+      if (matched) break;
+    }
+  }
+
+  // logout behavior (matches earlier logout functions)
+  const logoutBtn = document.getElementById('common-logout-btn');
+  if (logoutBtn) {
+    logoutBtn.addEventListener('click', () => {
+      try { localStorage.setItem('isLoggedIn','false'); } catch(e) {}
+      // preserve existing logout pattern: redirect to login.html
+      window.location.href = '/login.html';
+    });
+  }
+})();
+</script>
+<!-- ====== END: COMMON NAVBAR ====== -->
 
 </html>
