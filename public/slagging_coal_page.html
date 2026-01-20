@@ -7,6 +7,9 @@
     <link rel="icon" href="images/abhitech-logo.png">
     <script type="text/javascript" src="https://www.gstatic.com/charts/loader.js"></script> 
     <script src="https://cdn.plot.ly/plotly-3.0.1.min.js"></script>   
+    <script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
+
+
 <style>
         body {
             margin: 0;
@@ -1335,7 +1338,7 @@ function addBlend() {
         var samples = [];
         let predictedAFT = 0;
         
-        function calculateWeightedAverage() {
+        async function calculateWeightedAverage() {
 
             let totalCurrentRange = 0;
             const ranges = document.querySelectorAll('input[id^="currentrange"]');
@@ -1431,45 +1434,34 @@ propertySums[prop] += propValue * currentRange;
                 let PO = propertySums["P₂O₅"] / totalPercentage;
                 let S = propertySums["Sulphur (S)"]/totalPercentage;
                 let MNO = propertySums["Mn₃O₄"]/totalPercentage;
-                let GCV = propertySums["GCV"]/totalPercentage;
-        
-            const sumSiAl = SIO + ALO;
-            let predictedAFT;
+                //let GCV = propertySums["GCV"]/totalPercentage;
+                
+                const result = await axios.post(
+  'http://localhost:3000/calculate-aft',
+  {
+    values: [
+      SIO,  // SiO2
+      ALO,  // Al2O3
+      FEO,  // Fe2O3
+      CAO,  // CaO
+      MGO,  // MgO
+      NAO,  // Na2O
+      KO,   // K2O
+      SO,   // SO3
+      TIO   // TiO2
+    ]
+  },
+  {
+    withCredentials: true,
+    headers: { 'Content-Type': 'application/json' }
+  }
+);
 
-            if (sumSiAl < 55) {
-                predictedAFT =
-                    1245 +
-                    (1.1  * SIO) +
-                    (0.95 * ALO) -
-                    2.5  * FEO -
-                    2.98 * CAO -
-                    4.5  * MGO -
-                    7.89 * (NAO + KO) -
-                    1.7  * SO -
-                    0.63 * TIO;
-            } else if (sumSiAl >= 55 && sumSiAl < 75) {               // 55 ≤ SiO₂ + Al₂O₃ < 75
-                predictedAFT =
-                    1323 +
-                    1.45  * SIO +
-                    0.683 * ALO -
-                    2.39  * FEO -
-                    3.1   * CAO -
-                    4.5   * MGO -
-                    7.49  * (NAO + KO) -
-                    2.1   * SO -
-                    0.63  * TIO;
-            } else {                                 // SiO₂ + Al₂O₃ ≥ 75
-                predictedAFT =
-                    1395 +
-                    1.2 * SIO +
-                    0.9 * ALO -
-                    2.5 * FEO -
-                    3.1 * CAO -
-                    4.5 * MGO -
-                    7.2 * (NAO + KO) -
-                    1.7 * SO -
-                    0.63 * TIO;
-            }
+const data = result.data.prediction;
+                
+                console.log("API result:", result.data);
+                predictedAFT = result.data.prediction;
+                
             console.log("predicted AFT:", predictedAFT);
          
             blendValuesDiv.innerHTML = ""; 
@@ -2267,7 +2259,10 @@ propertySums[prop] += propValue * currentRange;
  
     
     </script>
+
    <script>
+
+    
 
 async function callConsumeTrial() {
   try {
