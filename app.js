@@ -12,11 +12,17 @@ const ExcelJS = require('exceljs');
 const cors = require('cors');
 const session = require('express-session');
 const bcrypt = require('bcryptjs');
+const fs = require("fs");
+const { RandomForestRegression } = require("ml-random-forest");
 
 require('dotenv').config();
 
+
+
 const app = express();
 
+const modelJSON = JSON.parse(fs.readFileSync("aft_model.json"));
+const model = RandomForestRegression.load(modelJSON);
 // ---------- CONFIG ----------
 const MONGODB_URI = process.env.MONGODB_URI || 'YOUR_MONGODB_URI_HERE';
 const PORT = process.env.PORT || 5000; // default 5000 to match your fetch
@@ -457,27 +463,104 @@ async function requireAuth(req, res, next) {
 // });
 
 
-// ---------- AFT calculator (kept) ----------
 function calculateAFT(values) {
-  const [SiO2, Al2O3, Fe2O3, CaO, MgO, Na2O, K2O, SO3, Ti2O] = values;
-  const sumSiAl = SiO2 + Al2O3;
-  if (sumSiAl < 55) {
-      return (
-          1245 + 1.1 * SiO2 + 0.95 * Al2O3 - 2.5 * Fe2O3 - 2.98 * CaO - 4.5 * MgO -
-          7.89 * (Na2O + K2O) - 1.7 * SO3 - 0.63 * Ti2O
-      );
-  } else if (sumSiAl >= 55 && sumSiAl < 75) {
-      return (
-          1323 + 1.45 * SiO2 + 0.683 * Al2O3 - 2.39 * Fe2O3 - 3.1 * CaO - 4.5 * MgO -
-          7.49 * (Na2O + K2O) - 2.1 * SO3 - 0.63 * Ti2O
-      );
-  } else {
-      return (
-          1395 + 1.2 * SiO2 + 0.9 * Al2O3 - 2.5 * Fe2O3 - 3.1 * CaO - 4.5 * MgO -
-          7.2 * (Na2O + K2O) - 1.7 * SO3 - 0.63 * Ti2O
-      );
+  try {
+    console.log(model.predict([values])[1]);
+    return model.predict([values])[0];
+  } catch (e) {
+    console.warn("ML prediction failed, falling back to formula.");
+    
+    const [SiO2, Al2O3, Fe2O3, CaO, MgO, Na2O, K2O, SO3, Ti2O] = values;
+    const sumSiAl = SiO2 + Al2O3;
+
+    if (sumSiAl < 55) {
+      return 1245 + 1.1*SiO2 + 0.95*Al2O3 - 2.5*Fe2O3 - 2.98*CaO - 4.5*MgO -
+             7.89*(Na2O+K2O) - 1.7*SO3 - 0.63*Ti2O;
+    } 
+    else if (sumSiAl < 75) {
+      return 1323 + 1.45*SiO2 + 0.683*Al2O3 - 2.39*Fe2O3 - 3.1*CaO - 4.5*MgO -
+             7.49*(Na2O+K2O) - 2.1*SO3 - 0.63*Ti2O;
+    } 
+    else {
+      return 1395 + 1.2*SiO2 + 0.9*Al2O3 - 2.5*Fe2O3 - 3.1*CaO - 4.5*MgO -
+             7.2*(Na2O+K2O) - 1.7*SO3 - 0.63*Ti2O;
+    }
   }
 }
+
+function formulaAFT(values) {
+  const [SiO2, Al2O3, Fe2O3, CaO, MgO, Na2O, K2O, SO3, TiO2] = values;
+  const sumSiAl = SiO2 + Al2O3;
+
+  if (sumSiAl < 55) {
+    return 1245 +
+      1.1 * SiO2 +
+      0.95 * Al2O3 -
+      2.5 * Fe2O3 -
+      2.98 * CaO -
+      4.5 * MgO -
+      7.89 * (Na2O + K2O) -
+      1.7 * SO3 -
+      0.63 * TiO2;
+  } else if (sumSiAl < 75) {
+    return 1323 +
+      1.45 * SiO2 +
+      0.683 * Al2O3 -
+      2.39 * Fe2O3 -
+      3.1 * CaO -
+      4.5 * MgO -
+      7.49 * (Na2O + K2O) -
+      2.1 * SO3 -
+      0.63 * TiO2;
+  } else {
+    return 1395 +
+      1.2 * SiO2 +
+      0.9 * Al2O3 -
+      2.5 * Fe2O3 -
+      3.1 * CaO -
+      4.5 * MgO -
+      7.2 * (Na2O + K2O) -
+      1.7 * SO3 -
+      0.63 * TiO2;
+  }
+}
+
+function buildFeatures(values) {
+  const [
+    SiO2,
+    Al2O3,
+    Fe2O3,
+    CaO,
+    MgO,
+    Na2O,
+    K2O,
+    SO3,
+    TiO2,
+  ] = values;
+
+  const SiAl = SiO2 + 0.8 * Al2O3;   
+  const Flux = CaO + MgO + Fe2O3;    
+  const Alk  = Na2O + K2O;            
+
+  return [
+    SiAl,
+    Flux,
+    Alk,
+    SO3,
+    TiO2,
+  ];
+}
+
+app.post("/calculate-aft", async (req, res) => {
+ const base = formulaAFT(req.body.values);
+ console.log("Base AFT (formula):", base);
+  const features = buildFeatures(req.body.values);
+  console.log("Features for ML model:", features);
+  const correction = model.predict([features])[0];
+  console.log("ML Model Correction:", correction);
+  console.log("Final AFT Prediction:", base + correction);
+  return res.status(200).json({ prediction: base + correction });
+})
 
 // // ---------- AUTH ROUTES ----------
 
@@ -1211,6 +1294,7 @@ app.post("/optimize", requireAuth, async (req, res) => {
 
       // predicted AFT using your calculateAFT (assumed defined above)
       const predictedAFT = calculateAFT(blendedOxides);
+      console.log('Evaluated blend:', blend, 'Predicted AFT:', predictedAFT);
 
       // total GCV and cost: blend array is percentage integers, divide by 100
       const totalGcv = blend.reduce((sum, pct, i) => sum + pct * (gcvValue[i] || 0), 0) / 100;
@@ -1266,6 +1350,7 @@ app.post("/optimize", requireAuth, async (req, res) => {
       oxideValues.reduce((sum, val, idx) => sum + val[oi] * (currentWeights[idx] || 0), 0)
     );
     const currentAFT = calculateAFT(currentBlendedOxides);
+    console.log('Current blend oxides:', currentBlendedOxides, 'Predicted AFT:', currentAFT);
     const currentGCV = blends.reduce((sum, b, i) => sum + (Number(b.current) || 0) * (gcvValue[i] || 0), 0) / 100;
     const currentCost = blends.reduce((sum, b, i) => sum + (Number(b.current) || 0) * (costsPerTon[i] || 0), 0) / 100;
     const currentBlend = { blend: blends.map(b => Number(b.current) || 0), predicted_aft: currentAFT, gcv: currentGCV, cost: currentCost };
@@ -1276,12 +1361,16 @@ app.post("/optimize", requireAuth, async (req, res) => {
       predicted_aft: calculateAFT(vals)
     }));
 
+    console.log('Optimization complete. Best AFT blend:', individualCoalAFTs);
+
     // Decrement trial for user and save (if you want to count this run)
     user.trialsLeft = Math.max(0, (user.trialsLeft || 0) - 1);
     if (user.trialsLeft <= 0) {
       user.lockedUntil = new Date(Date.now() + 24 * 3600 * 1000);
     }
     await user.save();
+
+    console.log(`best AFT: ${bestAftBlend.blend}, cheapest cost: ${cheapestBlend.blend}, balanced score: ${balancedBlend.blend}, trials left: ${user.trialsLeft}`)
 
     // return response shaped to client expectations
     return res.json({
